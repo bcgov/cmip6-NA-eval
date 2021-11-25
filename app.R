@@ -55,7 +55,6 @@ gcms.select = gcms[select]
 scenarios <- unique(template[,1])
 scenario.names <- c("Historical simulations", "SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5")
 gcm.names <- as.character(modelMetadata[,1])
-gcm.names.select <- gcm.names[select]
 
 mods <- substr(gcms, 1, 2)
 
@@ -69,7 +68,7 @@ monthdays <- c(31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 monthcodes <- c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12")
 seasonmonth.mat <- matrix(monthcodes[c(12, 1:11)],4, byrow=T)
 
-proj.years <- c(2010, 2030, 2050, 2070, 2090)
+proj.years <- c(2001, 2021, 2041, 2061, 2081)
 proj.year.names <- c("2001-2020", "2021-2040", "2041-2060", "2061-2080", "2081-2100")
 
 seasons <- c("wt", "sp", "sm", "at")
@@ -186,7 +185,7 @@ ui <- fluidPage(
              tabPanel("Time Series",
                       sidebarLayout(
                         sidebarPanel(
-                          helpText("Compare CMIP6 climate model simulations to each other and to observations. Compile custom ensembles with and without bias correction. See projections for subregions (ecoprovinces) of BC. The 8-model subset of the ClimateNA ensemble is the default selection. Shaded areas are the minimum and maximum of the multiple simulation runs for each climate model; a line indicates there is only one simulation for that scenario. "),
+                          helpText("Compare CMIP6 climate model simulations to each other and to observations. Compile custom ensembles with and without bias correction. See projections for subregions (IPCC regions). The 8-model subset of the ClimateNA ensemble is the default selection. Shaded areas are the minimum and maximum of the multiple simulation runs for each climate model; a line indicates there is only one simulation for that scenario. "),
                           
                           tags$head(tags$script('$(document).on("shiny:connected", function(e) {
                             Shiny.onInputChange("innerWidth", window.innerWidth);
@@ -413,9 +412,9 @@ ui <- fluidPage(
                             condition = "input.modeChange == 'Custom'",
                             
                             checkboxGroupInput("gcms.change", "Choose global climate models:",
-                                               choiceNames = gcms,
-                                               choiceValues = gcms,
-                                               selected = gcms,
+                                               choiceNames = gcm.names,
+                                               choiceValues = gcm.names,
+                                               selected = gcm.names,
                                                inline = T
                             ),
                           ),
@@ -427,39 +426,47 @@ ui <- fluidPage(
                                        selected = proj.years[3]),
                           
                           radioButtons("scenario.change", "Choose emissions scenario",
-                                       choiceNames = scenario.names,
-                                       choiceValues = scenarios,
-                                       selected = scenarios[2],
+                                       choiceNames = scenario.names[-1],
+                                       choiceValues = scenarios[-1],
+                                       selected = scenarios[3],
                                        inline = T),
                           
                           checkboxInput("trajectories", label = "Include model trajectories", value = T),
                           
-                          selectInput("element1.change",
-                                      label = "x-axis: choose the climate element",
-                                      choices = as.list(element.names),
-                                      selected = element.names[1]),
+                          fluidRow(
+                            box(width = 12, 
+                                splitLayout(
+                                  checkboxInput("trajectories", label = "Show model trajectories", value = T),                                  
+                                  checkboxInput("runs", label = "Show model runs", value = F)
+                                )
+                            )
+                          ),
                           
-                          selectInput("yeartime1.change",
-                                      label = "x-axis: Choose the month/season",
-                                      choices = as.list(yeartime.names),
-                                      selected = yeartime.names[3]),
+                          div(style="display:inline-block; width: 290px",selectInput("element1.change",
+                                                                                     label = "x-axis element",
+                                                                                     choices = as.list(element.names),
+                                                                                     selected = element.names[1])),
+                          div(style="display:inline-block; width: 200px",selectInput("yeartime1.change",
+                                                                                     label = "x-axis month/season",
+                                                                                     choices = as.list(yeartime.names),
+                                                                                     selected = yeartime.names[3])),
                           
-                          selectInput("element2.change",
-                                      label = "y-axis: choose the climate element",
-                                      choices = as.list(element.names),
-                                      selected = element.names[3]),
                           
-                          selectInput("yeartime2.change",
-                                      label = "y-axis: Choose the month/season",
-                                      choices = as.list(yeartime.names),
-                                      selected = yeartime.names[3]),
+                          div(style="display:inline-block; width: 290px",selectInput("element2.change",
+                                                                                     label = "y-axis element",
+                                                                                     choices = as.list(element.names),
+                                                                                     selected = element.names[3])),
+                          div(style="display:inline-block; width: 200px",selectInput("yeartime2.change",
+                                                                                     label = "y-axis month/season",
+                                                                                     choices = as.list(yeartime.names),
+                                                                                     selected = yeartime.names[3])),
                           
                           selectInput("region.name.change",
-                                      label = "Choose a region",
+                                      label = "Choose an IPCC region",
                                       choices = as.list(region.names),
                                       selected = region.names[1]),
                           
-                          img(src = "ipccregions.png", height = 1861*1/5, width = 1600*1/5)
+                          img(src = "ipccregions.png", height = 1861*1/5, width = 1861*1/5)
                         ),    
                         
                         mainPanel(
@@ -487,7 +494,6 @@ ui <- fluidPage(
                       )
              ),
              
-
              
              ## -----------------------------------------------------
              ## Maps TAB
@@ -962,18 +968,18 @@ server <- function(input, output, session) {
   )
   
   output$ChangePlot <- renderPlotly({
-
+    
     # region <- regions[1]
     # yeartime1 <- yeartimes[1]
     # yeartime2 <- yeartimes[1]
     # element1 <- elements[1]
-    # element2 <- elements[4]
-    # proj.year <- proj.years[3]
+    # element2 <- elements[3]
+    # proj.year <- proj.years[3]-9
     # scenario <- scenarios[2]
-    # gcms.change <- gcms
-
-    # observe(updateCheckboxGroupInput(session, "gcms.change", selected = gcms[which(gcms%in%kkzRank[1:input$kkzN,which(region.names==input$region.name.change)])]))
-
+    # gcms.change <- gcm.names
+    
+    # observe(updateCheckboxGroupInput(session, "gcms.change", selected = gcm.names[which(gcm.names%in%kkzRank[1:input$kkzN,which(region.names==input$region.name.change)])]))
+    
     region <- regions[which(region.names==input$region.name.change)]
     yeartime1 <- yeartimes[which(yeartime.names==input$yeartime1.change)]
     yeartime2 <- yeartimes[which(yeartime.names==input$yeartime2.change)]
@@ -983,60 +989,66 @@ server <- function(input, output, session) {
     scenario <- input$scenario.change
     if(input$modeChange=="Predefined"){
       if(input$includeUKESM==T){
-        gcms.change <- gcms[which(gcms%in%kkzRank.includeUKESM[1:input$kkzN,which(region.names==input$region.name.change)])]
+        gcms.change <- gcm.names[which(gcm.names%in%kkzRank.includeUKESM[1:input$kkzN,which(region.names==input$region.name.change)])]
       } else {
-        gcms.change <- gcms[which(gcms%in%kkzRank.excludeUKESM[1:input$kkzN,which(region.names==input$region.name.change)])]
+        gcms.change <- gcm.names[which(gcm.names%in%kkzRank.excludeUKESM[1:input$kkzN,which(region.names==input$region.name.change)])]
       }
     } else {
       gcms.change <- input$gcms.change
     }
-
+    
     variable1 <- paste(element1, yeartime1, sep= if(yeartime1%in%seasons) "_" else "")
     variable2 <- paste(element2, yeartime2, sep= if(yeartime2%in%seasons) "_" else "")
-
+    
     data <- read.csv(paste("data/change", region, "csv", sep="."))
-
+    data.runs <- read.csv(paste("data/change.runs", region, "csv", sep="."))
+    
     x <- data[, which(names(data)==variable1)]
     y <- data[, which(names(data)==variable2)]
-    x0 <- data[which(data$proj.year==2010 & data$gcm=="obs"), which(names(data)==variable1)]
-    y0 <- data[which(data$proj.year==2010 & data$gcm=="obs"), which(names(data)==variable2)]
+    x0 <- data[which(data$proj.year==2001 & data$gcm=="obs"), which(names(data)==variable1)]
+    y0 <- data[which(data$proj.year==2001 & data$gcm=="obs"), which(names(data)==variable2)]
     x.mean <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms.change), which(names(data)==variable1)])
     y.mean <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms.change), which(names(data)==variable2)])
-    x.mean.climatena <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms), which(names(data)==variable1)])
-    y.mean.climatena <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms), which(names(data)==variable2)])
-
+    x.mean.ClimateBC <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcm.names), which(names(data)==variable1)])
+    y.mean.ClimateBC <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcm.names), which(names(data)==variable2)])
+    
     xlim=range(x)*c(if(min(x)<0) 1.1 else 0.9, if(max(x)>0) 1.1 else 0.9)
     ylim=range(y)*c(if(min(y)<0) 1.1 else 0.9, if(max(y)>0) 1.1 else 0.9)
-
+    
     #initiate the plot
     fig <- plot_ly(x=x,y=y, type = 'scatter', mode = 'markers', marker = list(color ="lightgrey", size=5), hoverinfo="none", color="All models/scenarios/times")
-
-    fig <- fig %>% layout(xaxis = list(title=paste("Change in", variable.names$Variable[which(variable.names$Code==variable1)]),
-                                       range=xlim),
+    
+    fig <- fig %>% layout(xaxis = list(title=paste("Change in", variable.names$Variable[which(variable.names$Code==variable1)]), 
+                                       range=xlim), 
                           yaxis = list(title=paste("Change in", variable.names$Variable[which(variable.names$Code==variable2)]),
                                        range=ylim)
     )
-
-    fig <- fig %>% add_markers(x=x0,y=y0, color="Observed (2001-2020)", text="Observed\n(2001-2020)", hoverinfo="text",
+    
+    fig <- fig %>% add_markers(x=x0,y=y0, color="observed (2001-2020)", text="observed\n(2001-2020)", hoverinfo="text",
                                marker = list(size = 25,
                                              color = "grey"))
-
+    
     fig <- fig %>% add_markers(x=x.mean,y=y.mean, color="Custom ensemble mean", text="Custom ensemble mean", hoverinfo="text",
                                marker = list(size = 20,
                                              color = "grey", symbol = 3))
-
-    fig <- fig %>% add_markers(x=x.mean.climatena,y=y.mean.climatena, color="ClimateNA 13-model mean", text="ClimateNA 13-model mean", hoverinfo="text",
+    
+    fig <- fig %>% add_markers(x=x.mean.ClimateBC,y=y.mean.ClimateBC, color="ClimateBC 13-model mean", text="ClimateBC 13-model mean", hoverinfo="text",
                                marker = list(size = 20,
                                              color = "black", symbol = 103))
-
+    
     gcm=gcms.change[3]
     for(gcm in gcms.change){
-      i=which(gcms==gcm)
+      i=which(gcm.names==gcm)
       x1 <- data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm==gcm), which(names(data)==variable1)]
       y1 <- data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm==gcm), which(names(data)==variable2)]
       x2 <- data[c(1, which(data$scenario==scenario & data$gcm==gcm)), which(names(data)==variable1)]
       y2 <- data[c(1, which(data$scenario==scenario & data$gcm==gcm)), which(names(data)==variable2)]
-
+      
+      #data to produce convex hull of individual runs
+      x.runs <- data.runs[which(data.runs$scenario==scenario & data.runs$proj.year==proj.year & data.runs$gcm==gcm), which(names(data.runs)==variable1)]
+      y.runs <- data.runs[which(data.runs$scenario==scenario & data.runs$proj.year==proj.year & data.runs$gcm==gcm), which(names(data.runs)==variable2)]
+      runs <- data.runs$run[which(data.runs$scenario==scenario & data.runs$proj.year==proj.year & data.runs$gcm==gcm)]
+      
       if(input$trajectories==T){
         if(length(unique(sign(diff(x2))))==1){
           x3 <- if(unique(sign(diff(x2)))==-1) rev(x2) else x2
@@ -1050,37 +1062,46 @@ server <- function(input, output, session) {
           limit <- c(1, (which(proj.years <= proj.year)+1))
           fig <- fig %>% add_trace(x=x2[limit], y=y2[limit], type = 'scatter', mode = 'lines', line = list(color=ColScheme[i]), marker=NULL, legendgroup=paste("group", i, sep=""), showlegend = FALSE)
         }
-        fig <- fig %>% add_markers(x=x2,y=y2, color=gcms[i], text=gcms[i], hoverinfo="text",
+        fig <- fig %>% add_markers(x=x2,y=y2, color=gcm.names[i], text=gcm.names[i], hoverinfo="text",
                                    marker = list(size = 8,
                                                  color = ColScheme[i]),
                                    legendgroup=paste("group", i, sep=""), showlegend = FALSE)
       }
-
-      fig <- fig %>% add_markers(x=x1,y=y1, color=gcms[i],
+      
+      if(input$runs==T){
+        fig <- fig %>% add_markers(x=x.runs,y=y.runs, text=paste(gcm.names[i], runs), hoverinfo="text", showlegend = F,
+                                   marker = list(size = 7,
+                                                 color = ColScheme[i],
+                                                 line = list(color = "black",
+                                                             width = 1)),
+                                   legendgroup=paste("group", i, sep=""))
+      }
+      
+      fig <- fig %>% add_markers(x=x1,y=y1, color=gcm.names[i],
                                  marker = list(size = 20,
                                                color = ColScheme[i],
                                                line = list(color = "black",
                                                            width = 1)),
                                  legendgroup=paste("group", i, sep=""))
-
+      
       fig <- fig %>% add_annotations(x=x1,y=y1, text = sprintf("<b>%s</b>", mods[i]), xanchor = 'center', yanchor = 'center', showarrow = F,
-                                     legendgroup=paste("group", i, sep="")    )
-
+                                     legendgroup=paste("group", i, sep=""))
+      
     }
-
+    
     if(element1=="PPT") fig <- fig %>% layout(xaxis = list(tickformat = "%"))
     if(element2=="PPT") fig <- fig %>% layout(yaxis = list(tickformat = "%"))
-
+    
     fig
-
-  }
+    
+  }  
   )
-
+  
   # Downloadable csv of selected dataset ----
   data_change <- reactive(read.csv(paste("data/change", regions[which(region.names==input$region.name.change)], "csv", sep=".")))
-
+  
   output$downloadData_change <- downloadHandler(
-
+    
     filename = function() {
       paste("CMIP6NA.change", regions[which(region.names==input$region.name.change)], "csv", sep=".")
     },
@@ -1088,7 +1109,7 @@ server <- function(input, output, session) {
       write.csv(data_change(), file, row.names = FALSE)
     }
   )
-
+  
   output$changeMap <- renderImage({
 
     if(input$mapType=="Topography"){
