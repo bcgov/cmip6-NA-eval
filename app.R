@@ -37,9 +37,8 @@ kkzRank.includeUKESM <- read.csv("data/kkzRank.includeUKESM.csv")
 kkzRank.excludeUKESM <- read.csv("data/kkzRank.excludeUKESM.csv")
 
 # Define the subregions
-ipccregions <- readOGR("data/ipccregions.shp")
-regions <- c("NAM", ipccregions$Acronym[match(names(kkzRank.includeUKESM)[-1], ipccregions$Acronym)])
-region.names <- c("North America", ipccregions$Name[match(names(kkzRank.includeUKESM)[-1], ipccregions$Acronym)])
+regions <- c("NAM", "NWN", "NEN", "WNA", "CNA", "ENA", "NCA", "SCA")
+region.names <- c("North America", "NW North America", "NE North America", "Western North America", "Central North America", "Eastern North America", "Northern Central America", "Southern Central America")
 
 # Define climate elements
 elements <- c("Tmax", "Tmin", "PPT")
@@ -48,12 +47,15 @@ element.names.units <- c(bquote(Mean~daily~bold(maximum)~temperature~"("*degree*
 variable.names <- read.csv("data/Variables_ClimateBC.csv")
 
 # extract the global climate models and scenarios from an arbitrary file. 
-template <- read.csv("data/change.NAM.csv", stringsAsFactors = F)
-gcms <- unique(template$gcm[-c(1:2)])
-scenarios <- unique(template[-c(1:2),2])
-scenario.names <- c("SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5")
-proj.years <- unique(template[-c(1:2),3])
-proj.year.names <- c("2001-2020", "2021-2040", "2041-2060", "2061-2080", "2081-2100")
+files <- list.files("data/", pattern="^ensmin.NA")
+template <- read.csv(paste("data/", files[1], sep=""), stringsAsFactors = F)
+gcms <- names(template)[-c(1:2, length(names(template)))]
+select <- c(1,4,5,6,7,10,11,12)
+gcms.select = gcms[select]
+scenarios <- unique(template[,1])
+scenario.names <- c("Historical simulations", "SSP1-2.6", "SSP2-4.5", "SSP3-7.0", "SSP5-8.5")
+gcm.names <- as.character(modelMetadata[,1])
+gcm.names.select <- gcm.names[select]
 
 mods <- substr(gcms, 1, 2)
 
@@ -67,11 +69,16 @@ monthdays <- c(31, 28.25, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 monthcodes <- c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12")
 seasonmonth.mat <- matrix(monthcodes[c(12, 1:11)],4, byrow=T)
 
+proj.years <- c(2010, 2030, 2050, 2070, 2090)
+proj.year.names <- c("2001-2020", "2021-2040", "2041-2060", "2061-2080", "2081-2100")
+
 seasons <- c("wt", "sp", "sm", "at")
 season.names <- c("Winter", "Spring", "Summer", "Autumn")
 
 yeartimes <- c(seasons, monthcodes)
 yeartime.names <- c(season.names, month.name)
+
+ensstats <- c("ensmin", "ensmax", "ensmean")
 
 tab_block <- function(text, cor, icon, id){
   HTML(paste0('<a id="', id,'" href="#" class="action-button">
@@ -105,15 +112,15 @@ ui <- fluidPage(
                                     ensemble suited for your research. A similar app with additional features for British Columbia is available at <a href='https://bcgov-env.shinyapps.io/cmip6-BC/' target='_blank'>https://bcgov-env.shinyapps.io/cmip6-BC/</a></h5></h4>")
                       )
                ),
-               # column(width = 2, align = "left",
-               #        wellPanel(
-               #          actionButton("link_to_timeSeries", HTML("<h4><b>Time series</b></h4>")),
-               #          HTML("<h5> Compare historical and future model projections against observations,
-               #                                    for individual models and customizable ensembles,
-               #                                    with and without bias correction.</h5 >")
-               #        )
-               # ),
-               column(width = 4, align = "left",
+               column(width = 3, align = "left",
+                      wellPanel(
+                        actionButton("link_to_timeSeries", HTML("<h4><b>Time series</b></h4>")),
+                        HTML("<h5> Compare historical and future model projections against observations,
+                                                  for individual models and customizable ensembles,
+                                                  with and without bias correction.</h5 >")
+                      )
+               ),
+               column(width = 3, align = "left",
                       wellPanel(
                         actionButton("link_to_Change", HTML("<h4><b>Choose models</b></h4>")),
                         HTML("<h5>Compare model projections in a two-variable climate space. 
@@ -126,7 +133,7 @@ ui <- fluidPage(
                #          HTML("<h5>Assess model biases relative to historical observations.</h5 >")
                #        )
                # ),
-               column(width = 4, align = "left",
+               column(width = 3, align = "left",
                       wellPanel(
                         actionButton("link_to_Maps", HTML("<h4><b>Maps</b></h4>")),
                         HTML("<h5>Compare spatial variation in climate change among models. </h5 >")
@@ -171,6 +178,170 @@ ui <- fluidPage(
                                   )
                       )
                )
+             ),
+             
+             ## -----------------------------------------------------
+             ## Time Series
+             
+             tabPanel("Time Series",
+                      sidebarLayout(
+                        sidebarPanel(
+                          helpText("Compare CMIP6 climate model simulations to each other and to observations. Compile custom ensembles with and without bias correction. See projections for subregions (ecoprovinces) of BC. The 8-model subset of the ClimateNA ensemble is the default selection. Shaded areas are the minimum and maximum of the multiple simulation runs for each climate model; a line indicates there is only one simulation for that scenario. "),
+                          
+                          tags$head(tags$script('$(document).on("shiny:connected", function(e) {
+                            Shiny.onInputChange("innerWidth", window.innerWidth);
+                            });
+                            $(window).resize(function(e) {
+                            Shiny.onInputChange("innerWidth", window.innerWidth);
+                            });
+                            ')),
+                          
+                          radioButtons("mode", "GCM selection mode",
+                                       choiceNames = c("Single GCM", "Ensemble"),
+                                       choiceValues = c("Single GCM", "Ensemble"),
+                                       selected = "Ensemble",
+                                       inline = T),
+                          
+                          conditionalPanel(
+                            condition = "input.mode == 'Ensemble'",
+                            
+                            fluidRow(
+                              box(width = 12,
+                                  splitLayout(cellWidths = c("75%", "25%"),
+                                              
+                                              radioButtons("default.ensemble", label="Default Ensemble",
+                                                           choiceNames = c("13-model (ClimateNA)", "8-model subset"),
+                                                           choiceValues = c("13-model", "8-model"),
+                                                           selected = "8-model",
+                                                           inline = T
+                                              ),
+                                              
+                                              actionButton("reset_input", "Reset")
+                                              
+                                  )
+                              )
+                            ),
+                            
+                            checkboxInput("compile", label = "Compile into ensemble projection", value = TRUE),
+                            
+                            uiOutput('reset_gcms'), # this is the radiobutton list of gcms but it is moved to the server side to allow the reset button 
+                            
+                            
+                          ),
+                          
+                          conditionalPanel(
+                            condition = "input.mode == 'Single GCM'",
+                            
+                            radioButtons("gcms.ts1", "Choose a global climate model:",
+                                         choiceNames = gcm.names,
+                                         choiceValues = gcms,
+                                         selected = gcms[4],
+                                         inline = T
+                            ),
+                          ),
+                          
+                          checkboxInput("biascorrect", label = "Bias correction (match 1961-90 model climate to observations)", value = TRUE),
+                          
+                          checkboxGroupInput("scenarios1", "Choose emissions scenarios",
+                                             choiceNames = scenario.names[-1],
+                                             choiceValues = scenarios[-1],
+                                             selected = scenarios[c(2,3,4)],
+                                             inline = T
+                          ),
+                          
+                          checkboxInput("showmean", label = "Show mean of projections", value = T),
+                          
+                          checkboxInput("refline", label = "Show 1961-1990 baseline for models", value = T),
+                          
+                          fluidRow(
+                            box(width = 12, 
+                                splitLayout(
+                                  checkboxInput("yearlines", label = "Show 5-year gridlines", value = F),
+                                  
+                                  checkboxInput("yfit", label = "fit y axis to visible data", value = F)
+                                )
+                            )
+                          ),
+                          
+                          
+                          checkboxGroupInput("observations", "Choose observational datasets",
+                                             choiceNames = c("Stations (PCIC)", "Stations (ClimateNA)", "ERA5 reanalysis"),
+                                             choiceValues = c("pcic", "climatena", "era5"),
+                                             selected = "climatena",
+                                             inline = T
+                          ),
+                          
+                          # fluidRow(
+                          #   box(width = 12, 
+                          #       splitLayout(
+                          #         selectInput("element1",
+                          #                     label = "Choose the climate element",
+                          #                     choices = as.list(element.names),
+                          #                     selected = element.names[1]),
+                          #         
+                          #         selectInput("yeartime1",
+                          #                     label = "Choose the month/season",
+                          #                     choices = as.list(yeartime.names),
+                          #                     selected = yeartime.names[3])
+                          #       )
+                          #   )
+                          # ),
+                          
+                          div(style="display:inline-block; width: 290px",selectInput("element1",
+                                                                                     label = "Choose the climate element",
+                                                                                     choices = as.list(element.names),
+                                                                                     selected = element.names[1])),
+                          div(style="display:inline-block; width: 200px",selectInput("yeartime1",
+                                                                                     label = "Choose the month/season",
+                                                                                     choices = as.list(yeartime.names),
+                                                                                     selected = yeartime.names[3])),
+                          
+                          checkboxInput("compare", label = "Compare two variables", value = F),
+                          
+                          conditionalPanel(
+                            condition = "input.compare == true",
+                            
+                            div(style="display:inline-block; width: 290px",selectInput("element2",
+                                                                                       label = "Choose the climate element",
+                                                                                       choices = as.list(element.names),
+                                                                                       selected = element.names[1])),
+                            div(style="display:inline-block; width: 200px", selectInput("yeartime2",
+                                                                                        label = "Choose the month/season",
+                                                                                        choices = as.list(yeartime.names),
+                                                                                        selected = yeartime.names[1])),
+                          ),
+                          
+                          selectInput("region.name",
+                                      label = "Choose an IPCC region",
+                                      choices = as.list(region.names),
+                                      selected = region.names[1]),
+                          
+                          img(src = "ipccregions.png", height = round(1861*1/5), width = round(1993*1/5))
+                        ),
+                        
+                        mainPanel(
+                          
+                          downloadButton(outputId = "downloadPlot", label = "Download plot"),
+                          plotOutput(outputId = "timeSeries")
+                          
+                        )
+                      ),
+                      column(width = 12,
+                             style = "background-color:#003366; border-top:2px solid #fcba19;",
+                             
+                             tags$footer(class="footer",
+                                         tags$div(class="container", style="display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
+                                                  tags$ul(style="display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home", "Home", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"))
+                                                  )
+                                         )
+                             )
+                      )
              ),
              
              ## -----------------------------------------------------
@@ -483,6 +654,10 @@ ui <- fluidPage(
 # Define server logic ----
 server <- function(input, output, session) {
   
+  observeEvent(input$link_to_timeSeries, {
+    updateNavbarPage(session, "CMIP6-NA", selected="Time series")
+  })
+  
   observeEvent(input$link_to_Change, {
     updateNavbarPage(session, "CMIP6-NA", selected="Choose models")
   })
@@ -498,13 +673,293 @@ server <- function(input, output, session) {
         checkboxGroupInput("gcms.ts2", "Choose global climate models:",
                            choiceNames = gcms,
                            choiceValues = gcms,
-                           selected = gcms[select],
+                           selected = if(input$default.ensemble=="13-model") gcms else gcms[select] ,
                            inline = T
         )
     )
   })
   
 
+  timeSeriesPlot <- function() {
+    
+    # # user specificationS
+    # observations <- "climatena"
+    # region <- "NAM"
+    # yeartime1 <- yeartimes[1]
+    # yeartime2 <- yeartimes[3]
+    # element1 <- elements[1]
+    # element2 <- elements[1]
+    # variable1 <- paste(element1, yeartime1, sep= if(yeartime1%in%seasons) "_" else "")
+    # variable2 <- paste(element2, yeartime2, sep= if(yeartime2%in%seasons) "_" else "")
+    # gcms.ts <- gcms
+    # scenarios1 <- c("historical", scenarios[-1])
+    # nums <- c(1,2)
+    # biascorrect <- T
+    # yfit <- T
+    # refline <- T
+    
+    # user specificationS
+    observations <- input$observations
+    region <- regions[which(region.names==input$region.name)]
+    yeartime1 <- yeartimes[which(yeartime.names==input$yeartime1)]
+    yeartime2 <- if(input$compare==T) yeartimes[which(yeartime.names==input$yeartime2)] else yeartimes[which(yeartime.names==input$yeartime1)]
+    element1 <- elements[which(element.names==input$element1)]
+    element2 <- if(input$compare==T) elements[which(element.names==input$element2)] else elements[which(element.names==input$element1)]
+    variable1 <- paste(element1, yeartime1, sep= if(yeartime1%in%seasons) "_" else "")
+    variable2 <- paste(element2, yeartime2, sep= if(yeartime2%in%seasons) "_" else "")
+    gcms.ts <- if(input$mode=="Ensemble") input$gcms.ts2 else input$gcms.ts1
+    scenarios1 <- c("historical", input$scenarios1)
+    nums <- if(input$compare==T) c(1,2) else c(1)
+    biascorrect <- input$biascorrect
+    yfit <- input$yfit
+    refline <- input$refline
+    
+    ## Assemble the data that will be used in the plot
+    alldata <- vector() # a vector of all data on the plot for setting the ylim (y axis range)
+    visibledata <- vector() # a vector of all visible data on the plot for setting the ylim (y axis range)
+    num <- 1
+    for(num in nums){
+      
+      # data for observations
+      yeartime <- get(paste("yeartime",num,sep=""))
+      element <- get(paste("element",num,sep=""))
+      variable <- get(paste("variable",num,sep=""))
+      
+      obs.ts.mean <- read.csv(paste("data/ts.obs.mean.", region, ".csv", sep=""))
+      
+      x1 <- unique(obs.ts.mean[,1])
+      y1 <- obs.ts.mean[,which(names(obs.ts.mean)==variable)]
+      baseline.obs <- mean(y1[which(x1%in%1961:1990)])
+      alldata <- c(alldata, y1) #store values in a big vector for maintaining a constant ylim
+      visibledata <- c(visibledata, y1) #store values in a big vector for maintaining a constant ylim
+      
+      #data for GCMs
+      # ensstat <- ensstats[1]
+      for(ensstat in ensstats[c(3,1,2)]){ #need to reorder the enstats so that mean comes first, for bias correction
+        # scenario <- scenarios[1]
+        ## Note: rather than reading in a single large data file, this app stores data in many (~2000) small files, and reads them in on demand by user input
+        data <- read.csv(paste("data/", paste(ensstat, region, get(paste("variable",num, sep="")), "csv", sep="."), sep=""))
+        temp.historical <- data[which(data[,1]=="historical"),-1]
+        for(scenario in scenarios1){
+          temp <- data[which(data[,1]==scenario),-1]
+          if(scenario != "historical"){
+            temp <- rbind(temp.historical[dim(temp.historical)[1],match(names(temp), names(temp.historical))], temp) # add last year of historical runs
+          }
+          if(scenario == "historical") if(ensstat=="ensmean") baseline.mod <- apply(temp[which(temp[,1]%in%1961:1990),-1], 2, mean)
+          
+          alldata <- c(alldata, as.vector(unlist(temp[-1]))) #store values in a big vector for maintaining a constant ylim
+          # optional bias correction
+          if(biascorrect==T){
+            if(element=="PPT"){
+              delta <- baseline.obs/baseline.mod
+              delta <- delta[which(names(delta)!="compile")]
+              temp[,-1] <- sweep(temp[,-1], 2, delta, '*')
+            } else {
+              delta <- baseline.obs-baseline.mod
+              delta <- delta[which(names(delta)!="compile")]
+              temp[,-1] <- sweep(temp[,-1], 2, delta[match(names(temp[-1]), names(delta))], '+')
+            }
+          }
+          temp$compile <- if(length(gcms.ts)==0) rep(NA, dim(temp)[1]) else if(length(gcms.ts)==1) temp[,which(names(temp)==gcms.ts)] else apply(temp[,which(names(temp)%in%gcms.ts)], 1, substr(ensstat, 4, nchar(ensstat)), na.rm=T)
+          assign(paste(ensstat, scenario, num, sep="."), temp)
+          visibledata <- c(visibledata, temp$compile) #store values in a big vector for maintaining a constant ylim
+        }
+      }
+    }
+    
+    # PLOT
+    par(mfrow=c(1,1), mar=c(3,3,0.1,3), mgp=c(1.75, 0.25, 0), cex=1.4)
+    if(element1==element2){
+      ylab <- element.names.units[[which(elements==element1)]]
+    } else {
+      ylab <- if("PPT"%in%c(element1, element2)) bquote(Precipitation~"("*mm*")"~or~Mean ~ temperature ~ "(" * degree * C * ")") else element.names.units[[1]]
+    }
+    plot(0, col="white", xlim=c(1900, 2100), ylim=range(if(yfit==T) visibledata else alldata, na.rm = T), xaxs="i", xaxt="n", tck=0, xlab="", ylab=ylab)
+    axis(1, at=seq(1850,2100,25), labels = seq(1850,2100,25), tck=0)
+    
+    num <- 1
+    for(num in nums){
+      yeartime <- get(paste("yeartime",num,sep=""))
+      element <- get(paste("element",num,sep=""))
+      variable <- get(paste("variable",num,sep=""))
+      
+      # data for observations
+      x1 <- unique(obs.ts.mean[,1])
+      y1 <- obs.ts.mean[,which(names(obs.ts.mean)==variable)]
+      baseline.obs <- mean(y1[which(x1%in%1961:1990)])
+      recent.climatena <- mean(y1[which(x1%in%2012:2021)])
+      
+      # data for era5
+      if("era5"%in%observations){
+        era5.ts.mean <- read.csv(paste("data/ts.era5.mean.", region, ".csv", sep=""))
+        x2 <- unique(era5.ts.mean[,1])
+        y2 <- era5.ts.mean[,which(names(era5.ts.mean)==variable)]
+      }
+      
+      # data for pcic
+      if("pcic"%in%observations){
+        pcic.ts.mean <- read.csv(paste("data/ts.pcic.mean.", region, ".csv", sep=""))
+        x3 <- unique(pcic.ts.mean[,1])
+        y3 <- if(element=="PPT") pcic.ts.mean[,which(names(pcic.ts.mean)==variable)]*mean(y1[which(x1%in%1981:2010)]) + mean(y1[which(x1%in%1981:2010)]) else pcic.ts.mean[,which(names(pcic.ts.mean)==variable)] + mean(y1[which(x1%in%1981:2010)])  # apply faron's anomalies to the 1981-2010 absolute value of climatebc time series. 
+        baseline.pcic <- mean(y3[which(x3%in%1961:1990)])
+        y3 <- if(element=="PPT") y3*(baseline.obs/baseline.pcic) else y3+(baseline.obs-baseline.pcic)   # bias correct to 1961-1990 period
+        recent.pcic <- mean(y3[which(x3%in%2012:2021)], na.rm=T)
+      }
+      
+      if(input$compile==T) gcms.ts <- "compile" #this prevents the plotting of individual GCM projections and plots a single envelope for the ensemble as a whole. 
+      for(gcm in gcms.ts){
+        # scenario <- scenarios1[1]
+        for(scenario in scenarios1[order(c(1,4,5,3,2)[which(scenarios%in%scenarios1)])]){
+          
+          for(ensstat in ensstats){
+            temp <- get(paste(ensstat, scenario, num, sep="."))
+            x <- temp[,1]
+            temp <- temp[,which(names(temp)==gcm)]
+            assign(ensstat, temp)
+            assign(paste("x", scenario, sep="."), x)
+            assign(paste(ensstat, scenario, sep="."), temp)
+          }
+          
+          # colScheme <- c("gray60", "seagreen", "goldenrod4", "darkorange3", "darkred")
+          colScheme <- c("gray60", "dodgerblue4", "seagreen", "darkorange3", "darkred")
+          # colScheme <- c("gray80", "#1d3354", "#e9dc3d", "#f11111", "#830b22")
+          polygon(c(x, rev(x)), c(ensmin, rev(ensmax)), col=alpha(colScheme[which(scenarios==scenario)], if(gcm=="ensemble") 0.35 else 0.35), border=colScheme[which(scenarios==scenario)])
+          
+          if(refline==T){
+            ref.temp <- mean(ensmean.historical[111:140])
+            lines(1961:1990, rep(ref.temp, 30), lwd=2)
+            lines(c(1990,2100), rep(ref.temp, 2), lty=2)
+          }
+          
+          if(scenario != "historical"){
+            par(xpd=T)
+            baseline <- mean(ensmean.historical[111:140])
+            projected <- mean(ensmean[(length(x)-10):(length(x))])
+            if(element=="PPT"){
+              change <- round(projected/baseline-1,2)
+              if(is.na(change)==F) text(2098,projected, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=colScheme[which(scenarios==scenario)], pos=4, font=2, cex=1)
+            } else {
+              change <- round(projected-baseline,1)
+              if(is.na(change)==F) text(2098,projected, if(change>0) paste("+",change,"C", sep="") else paste(change,"C", sep=""), col=colScheme[which(scenarios==scenario)], pos=4, font=2, cex=1)
+            }
+            par(xpd=F)
+          }
+          
+          print(scenario)
+        }
+        
+        # overlay the ensemble mean lines on top of all polygons
+        for(scenario in scenarios1[order(c(1,4,5,3,2)[which(scenarios%in%scenarios1)])]){
+          if(input$showmean==T) lines(get(paste("x", scenario, sep=".")), get(paste("ensmean", scenario, sep=".")), col=colScheme[which(scenarios==scenario)], lwd=2)
+        }
+        
+        print(gcm)
+      }
+      
+      # overlay the ensemble mean lines on top of all polygons
+      if(input$yearlines==T){
+        for(n in seq(1905, 2095, 5)){
+          lines(c(n, n), c(-9999, 9999), col="grey", lty=2)
+        }
+      }
+      
+      # Text to identify the time of year
+      # if(input$compare==T){
+      if(element1==element2){
+        label <- yeartime.names[which(yeartimes==yeartime)]
+      } else {
+        label <- paste(yeartime.names[which(yeartimes==yeartime)], get(paste("element", num, sep="")))
+      }
+      temp <- get(paste("ensmax.historical", num, sep="."))
+      text(1925,mean(temp$compile[60:80]), label, col="black", pos=3, font=2, cex=1)
+      # }
+      
+      # add in PCIC observations
+      pcic.color <- "blue"
+      if("pcic"%in%observations){
+        end <- sum(!is.na(y3))
+        lines(x3[which(x3<1951)], y3[which(x3<1951)], lwd=3, lty=3, col=pcic.color)
+        lines(x3[which(x3>1949)], y3[which(x3>1949)], lwd=3, col=pcic.color)
+        # points(x3[end], y3[end], pch=16, cex=1, col=pcic.color)
+        # text(x3[end], y3[end], x3[end], pos= if(y3[end] < y3[end-1]) 1 else 3, srt=90, col=pcic.color, cex=1)
+        if(element=="PPT"){
+          change <- round(recent.pcic/baseline.obs-1,2)
+          text(2021,recent.pcic, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=pcic.color, pos=4, font=2, cex=1)
+        } else {
+          change <- round(recent.pcic-baseline.obs,1)
+          text(2021,recent.pcic, if(change>0) paste("+",change,"C", sep="") else paste(change,"C", sep=""), col=pcic.color, pos=4, font=2, cex=1)
+        }
+        lines(1961:1990, rep(baseline.obs, 30), lwd=1, col=pcic.color)
+        lines(c(1990,2021), rep(baseline.obs, 2), lty=2, col=pcic.color)
+        lines(c(2012,2021), rep(recent.pcic, 2), lty=2, col=pcic.color)
+      }
+      
+      # add in climatena observations
+      obs.color <- "black"
+      if("climatena"%in%observations){
+        lines(x1[which(x1<1951)], y1[which(x1<1951)], lwd=1.5, lty=3, col=obs.color)
+        lines(x1[which(x1>1949)], y1[which(x1>1949)], lwd=1.5, col=obs.color)
+        if(!("pcic"%in%observations)){
+          if(element=="PPT"){
+            change <- round(recent.climatena/baseline.obs-1,2)
+            text(2019,recent.climatena, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=obs.color, pos=4, font=2, cex=1)
+          } else {
+            change <- round(recent.climatena-baseline.obs,1)
+            text(2019,recent.climatena, if(change>0) paste("+",change,"C", sep="") else paste(change,"C", sep=""), col=obs.color, pos=4, font=2, cex=1)
+          }
+        }
+        lines(1961:1990, rep(baseline.obs, 30), lwd=1, col=obs.color)
+        lines(c(1990,2021), rep(baseline.obs, 2), lty=2, col=obs.color)
+        lines(c(2012,2021), rep(recent.climatena, 2), lty=2, col=obs.color)
+      }
+      
+      # add in era5 observations
+      era5.color <- "darkorange"
+      if("era5"%in%observations){
+        lines(x2, y2, col=era5.color, lwd=2)
+      }
+      
+      #legend
+      a <- if("pcic"%in%observations) 1 else NA
+      b <- if("climatena"%in%observations) 2 else NA
+      c <- if("era5"%in%observations) 3 else NA
+      d <- if(length(gcms.ts>0)) 4 else NA
+      s <- !is.na(c(a,b,c,d))
+      legend.GCM <- if(input$mode=="Ensemble") paste("Simulations (", length(input$gcms.ts2), " GCMs)", sep="")  else paste("Simulations (", input$gcms.ts1, ")", sep="")
+      legend("topleft", title = "Historical Period", legend=c("Observed (PCIC)", "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM)[s], bty="n",
+             lty=c(1,1,1,NA)[s], col=c(pcic.color, obs.color, era5.color, NA)[s], lwd=c(3,1.5,2,NA)[s], pch=c(NA,NA,NA, 22)[s], pt.bg = c(NA, NA,NA, colScheme[1])[s], pt.cex=c(NA,NA,NA,2)[s])
+      
+      s <- rev(which(scenarios[-1]%in%input$scenarios1))
+      legend("top", title = "Future Scenarios", legend=scenario.names[-1][s], bty="n",
+             lty=c(NA,NA,NA,NA)[s], col=colScheme[-1][s], lwd=c(NA,NA,NA,NA)[s], pch=c(22, 22, 22, 22)[s], pt.bg = alpha(colScheme[-1][s], 0.35), pt.cex=c(2,2,2,2)[s])
+      
+      mtext(region.names[which(regions==region)], side=1, line=-1.5, adj=0.95, font=2, cex=1.4)
+      
+      mtext("  Created using https://bcgov-env.shinyapps.io/cmip6-BC\n  Copyright 2021 Province of BC\n  Contact: Colin Mahony colin.mahony@gov.bc.ca", side=1, line=-1.35, adj=0.0, font=1, cex=1.1, col="gray")
+      
+      print(num)
+    }
+    box()
+  }
+  output$timeSeries <- renderPlot({ timeSeriesPlot() },
+                                  height=reactive(ifelse(!is.null(input$innerWidth),input$innerWidth*0.425,0))
+  )
+  
+  # Plot download
+  output$downloadPlot <- downloadHandler(
+    filename =  "Plot.png",
+    
+    content = function(file) {
+      
+      pixelratio <- session$clientData$pixelratio
+      width  <- session$clientData$output_timeSeries_width
+      height <- session$clientData$output_timeSeries_height
+      
+      png(file, width = width*pixelratio*3/2, height = height*pixelratio*3, res = 120*pixelratio)
+      timeSeriesPlot()
+      dev.off()
+    }
+  )
   
   output$ChangePlot <- renderPlotly({
 
@@ -547,8 +1002,8 @@ server <- function(input, output, session) {
     y0 <- data[which(data$proj.year==2010 & data$gcm=="obs"), which(names(data)==variable2)]
     x.mean <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms.change), which(names(data)==variable1)])
     y.mean <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms.change), which(names(data)==variable2)])
-    x.mean.ClimateBC <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms), which(names(data)==variable1)])
-    y.mean.ClimateBC <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms), which(names(data)==variable2)])
+    x.mean.climatena <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms), which(names(data)==variable1)])
+    y.mean.climatena <- mean(data[which(data$scenario==scenario & data$proj.year==proj.year & data$gcm%in%gcms), which(names(data)==variable2)])
 
     xlim=range(x)*c(if(min(x)<0) 1.1 else 0.9, if(max(x)>0) 1.1 else 0.9)
     ylim=range(y)*c(if(min(y)<0) 1.1 else 0.9, if(max(y)>0) 1.1 else 0.9)
@@ -570,7 +1025,7 @@ server <- function(input, output, session) {
                                marker = list(size = 20,
                                              color = "grey", symbol = 3))
 
-    fig <- fig %>% add_markers(x=x.mean.ClimateBC,y=y.mean.ClimateBC, color="ClimateNA 13-model mean", text="ClimateNA 13-model mean", hoverinfo="text",
+    fig <- fig %>% add_markers(x=x.mean.climatena,y=y.mean.climatena, color="ClimateNA 13-model mean", text="ClimateNA 13-model mean", hoverinfo="text",
                                marker = list(size = 20,
                                              color = "black", symbol = 103))
 
