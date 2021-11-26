@@ -257,7 +257,7 @@ ui <- fluidPage(
                                 splitLayout(
                                   checkboxInput("yearlines", label = "Show 5-year gridlines", value = F),
                                   
-                                  checkboxInput("yfit", label = "fit y axis to visible data", value = F)
+                                  checkboxInput("yfit", label = "fit y axis to visible data", value = T)
                                 )
                             )
                           ),
