@@ -180,12 +180,38 @@ ui <- fluidPage(
              ),
              
              ## -----------------------------------------------------
+             ## ABOUT
+             
+             tabPanel("About",
+                      
+                      includeMarkdown("about.Rmd"),
+                      
+                      column(width = 12,
+                             style = "background-color:#003366; border-top:2px solid #fcba19;",
+                             
+                             tags$footer(class="footer",
+                                         tags$div(class="container", style="display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
+                                                  tags$ul(style="display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home", "Home", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"))
+                                                  )
+                                         )
+                             )
+                      )
+             ),
+             
+             
+             ## -----------------------------------------------------
              ## Time Series
              
              tabPanel("Time series",
                       sidebarLayout(
                         sidebarPanel(
-                          helpText("Compare CMIP6 climate model simulations to each other and to observations. Compile custom ensembles with and without bias correction. See projections for subregions (IPCC regions). The 8-model subset of the ClimateNA ensemble is the default selection. Shaded areas are the minimum and maximum of the multiple simulation runs for each climate model; a line indicates there is only one simulation for that scenario. "),
+                          helpText("Compare CMIP6 climate model simulations to each other and to observations. Compile custom ensembles with and without bias correction. See projections for subregions (IPCC regions). The predefined 8-model subset of the ClimateNA ensemble (see the About tab) is the default selection. Shaded areas are the minimum and maximum of the multiple simulation runs for each climate model; a line indicates there is only one simulation for that scenario. "),
                           
                           tags$head(tags$script('$(document).on("shiny:connected", function(e) {
                             Shiny.onInputChange("innerWidth", window.innerWidth);
@@ -343,32 +369,6 @@ ui <- fluidPage(
                       )
              ),
              
-             ## -----------------------------------------------------
-             ## ABOUT
-             
-             tabPanel("About",
-                      
-                      includeMarkdown("about.Rmd"),
-                      
-                      column(width = 12,
-                             style = "background-color:#003366; border-top:2px solid #fcba19;",
-                             
-                             tags$footer(class="footer",
-                                         tags$div(class="container", style="display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-                                                  tags$ul(style="display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home", "Home", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
-                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
-                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
-                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
-                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
-                                                          tags$li(a(href="https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"))
-                                                  )
-                                         )
-                             )
-                      )
-             ),
-             
-
              
              ## -----------------------------------------------------
              ## CHANGE
