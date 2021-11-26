@@ -182,7 +182,7 @@ ui <- fluidPage(
              ## -----------------------------------------------------
              ## Time Series
              
-             tabPanel("Time Series",
+             tabPanel("Time series",
                       sidebarLayout(
                         sidebarPanel(
                           helpText("Compare CMIP6 climate model simulations to each other and to observations. Compile custom ensembles with and without bias correction. See projections for subregions (IPCC regions). The 8-model subset of the ClimateNA ensemble is the default selection. Shaded areas are the minimum and maximum of the multiple simulation runs for each climate model; a line indicates there is only one simulation for that scenario. "),
@@ -264,9 +264,9 @@ ui <- fluidPage(
                           
                           
                           checkboxGroupInput("observations", "Choose observational datasets",
-                                             choiceNames = c("Stations (PCIC)", "Stations (ClimateNA)", "ERA5 reanalysis"),
-                                             choiceValues = c("pcic", "climatena", "era5"),
-                                             selected = "climatena",
+                                             choiceNames = c("Stations (CRU/GPCC)", "Stations (ClimateNA)", "ERA5 reanalysis"),
+                                             choiceValues = c("cru", "climatena", "era5"),
+                                             selected = "cru",
                                              inline = T
                           ),
                           
@@ -795,21 +795,31 @@ server <- function(input, output, session) {
       baseline.obs <- mean(y1[which(x1%in%1961:1990)])
       recent.climatena <- mean(y1[which(x1%in%2012:2021)])
       
+      # data for cru
+      if("cru"%in%observations){
+        cru.ts.mean <- read.csv(paste("data/ts.cru.mean.", region, ".csv", sep=""))
+        x3 <- unique(cru.ts.mean[,1])
+        if(biascorrect==T){
+          y3 <- cru.ts.mean[,which(names(cru.ts.mean)==variable)]
+          baseline.cru <- mean(y3[which(x3%in%1961:1990)])
+          y3 <- if(element=="PPT") y3*(baseline.obs/baseline.cru) else y3+(baseline.obs-baseline.cru)   # bias correct to 1961-1990 period
+        }
+        baseline.cru <- mean(y3[which(x3%in%1961:1990)])
+        recent.cru <- mean(y3[which(x3%in%2011:2020)], na.rm=T)
+      }
+      
       # data for era5
       if("era5"%in%observations){
         era5.ts.mean <- read.csv(paste("data/ts.era5.mean.", region, ".csv", sep=""))
         x2 <- unique(era5.ts.mean[,1])
         y2 <- era5.ts.mean[,which(names(era5.ts.mean)==variable)]
-      }
-      
-      # data for pcic
-      if("pcic"%in%observations){
-        pcic.ts.mean <- read.csv(paste("data/ts.pcic.mean.", region, ".csv", sep=""))
-        x3 <- unique(pcic.ts.mean[,1])
-        y3 <- if(element=="PPT") pcic.ts.mean[,which(names(pcic.ts.mean)==variable)]*mean(y1[which(x1%in%1981:2010)]) + mean(y1[which(x1%in%1981:2010)]) else pcic.ts.mean[,which(names(pcic.ts.mean)==variable)] + mean(y1[which(x1%in%1981:2010)])  # apply faron's anomalies to the 1981-2010 absolute value of climatebc time series. 
-        baseline.pcic <- mean(y3[which(x3%in%1961:1990)])
-        y3 <- if(element=="PPT") y3*(baseline.obs/baseline.pcic) else y3+(baseline.obs-baseline.pcic)   # bias correct to 1961-1990 period
-        recent.pcic <- mean(y3[which(x3%in%2012:2021)], na.rm=T)
+        if(biascorrect==T){
+          y2 <- era5.ts.mean[,which(names(era5.ts.mean)==variable)]
+          baseline.era5 <- mean(y2[which(x2%in%1979:1990)])
+          y2 <- if(element=="PPT") y2*(baseline.obs/baseline.era5) else y2+(baseline.obs-baseline.era5)   # bias correct to 1961-1990 period
+        }
+        baseline.era5 <- mean(y2[which(x2%in%1979:1990)])
+        recent.era5 <- mean(y2[which(x2%in%2011:2020)], na.rm=T)
       }
       
       if(input$compile==T) gcms.ts <- "compile" #this prevents the plotting of individual GCM projections and plots a single envelope for the ensemble as a whole. 
@@ -880,24 +890,24 @@ server <- function(input, output, session) {
       text(1925,mean(temp$compile[60:80]), label, col="black", pos=3, font=2, cex=1)
       # }
       
-      # add in PCIC observations
-      pcic.color <- "blue"
-      if("pcic"%in%observations){
+      # add in cru observations
+      cru.color <- "blue"
+      if("cru"%in%observations){
         end <- sum(!is.na(y3))
-        lines(x3[which(x3<1951)], y3[which(x3<1951)], lwd=3, lty=3, col=pcic.color)
-        lines(x3[which(x3>1949)], y3[which(x3>1949)], lwd=3, col=pcic.color)
-        # points(x3[end], y3[end], pch=16, cex=1, col=pcic.color)
-        # text(x3[end], y3[end], x3[end], pos= if(y3[end] < y3[end-1]) 1 else 3, srt=90, col=pcic.color, cex=1)
+        lines(x3[which(x3<1951)], y3[which(x3<1951)], lwd=3, lty=3, col=cru.color)
+        lines(x3[which(x3>1949)], y3[which(x3>1949)], lwd=3, col=cru.color)
+        # points(x3[end], y3[end], pch=16, cex=1, col=cru.color)
+        # text(x3[end], y3[end], x3[end], pos= if(y3[end] < y3[end-1]) 1 else 3, srt=90, col=cru.color, cex=1)
         if(element=="PPT"){
-          change <- round(recent.pcic/baseline.obs-1,2)
-          text(2021,recent.pcic, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=pcic.color, pos=4, font=2, cex=1)
+          change <- round(recent.cru/baseline.cru-1,2)
+          text(2021,recent.cru, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=cru.color, pos=4, font=2, cex=1)
         } else {
-          change <- round(recent.pcic-baseline.obs,1)
-          text(2021,recent.pcic, if(change>0) paste("+",change,"C", sep="") else paste(change,"C", sep=""), col=pcic.color, pos=4, font=2, cex=1)
+          change <- round(recent.cru-baseline.cru,1)
+          text(2021,recent.cru, if(change>0) paste("+",change,"C", sep="") else paste(change,"C", sep=""), col=cru.color, pos=4, font=2, cex=1)
         }
-        lines(1961:1990, rep(baseline.obs, 30), lwd=1, col=pcic.color)
-        lines(c(1990,2021), rep(baseline.obs, 2), lty=2, col=pcic.color)
-        lines(c(2012,2021), rep(recent.pcic, 2), lty=2, col=pcic.color)
+        lines(1961:1990, rep(baseline.cru, 30), lwd=1, col=cru.color)
+        lines(c(1990,2021), rep(baseline.cru, 2), lty=2, col=cru.color)
+        lines(c(2012,2021), rep(recent.cru, 2), lty=2, col=cru.color)
       }
       
       # add in climatena observations
@@ -905,7 +915,7 @@ server <- function(input, output, session) {
       if("climatena"%in%observations){
         lines(x1[which(x1<1951)], y1[which(x1<1951)], lwd=1.5, lty=3, col=obs.color)
         lines(x1[which(x1>1949)], y1[which(x1>1949)], lwd=1.5, col=obs.color)
-        if(!("pcic"%in%observations)){
+        if(!("cru"%in%observations)){
           if(element=="PPT"){
             change <- round(recent.climatena/baseline.obs-1,2)
             text(2019,recent.climatena, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=obs.color, pos=4, font=2, cex=1)
@@ -926,14 +936,15 @@ server <- function(input, output, session) {
       }
       
       #legend
-      a <- if("pcic"%in%observations) 1 else NA
+      a <- if("cru"%in%observations) 1 else NA
       b <- if("climatena"%in%observations) 2 else NA
       c <- if("era5"%in%observations) 3 else NA
       d <- if(length(gcms.ts>0)) 4 else NA
       s <- !is.na(c(a,b,c,d))
       legend.GCM <- if(input$mode=="Ensemble") paste("Simulations (", length(input$gcms.ts2), " GCMs)", sep="")  else paste("Simulations (", input$gcms.ts1, ")", sep="")
-      legend("topleft", title = "Historical Period", legend=c("Observed (PCIC)", "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM)[s], bty="n",
-             lty=c(1,1,1,NA)[s], col=c(pcic.color, obs.color, era5.color, NA)[s], lwd=c(3,1.5,2,NA)[s], pch=c(NA,NA,NA, 22)[s], pt.bg = c(NA, NA,NA, colScheme[1])[s], pt.cex=c(NA,NA,NA,2)[s])
+      label.cru <- if(element1==element2 & element1=="PPT") "Observed (GPCC)" else {if(element1==element2 & element1!="PPT") "Observed (CRU TS4)" else "Observed (CRU/GPCC)"}
+            legend("topleft", title = "Historical Period", legend=c(label.cru, "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM)[s], bty="n",
+             lty=c(1,1,1,NA)[s], col=c(cru.color, obs.color, era5.color, NA)[s], lwd=c(3,1.5,2,NA)[s], pch=c(NA,NA,NA, 22)[s], pt.bg = c(NA, NA,NA, colScheme[1])[s], pt.cex=c(NA,NA,NA,2)[s])
       
       s <- rev(which(scenarios[-1]%in%input$scenarios1))
       legend("top", title = "Future Scenarios", legend=scenario.names[-1][s], bty="n",
