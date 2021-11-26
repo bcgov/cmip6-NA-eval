@@ -1,3 +1,9 @@
+---
+title: "About"
+author: "Colin Mahony"
+date: "26/11/2021"
+output: html_document
+---
 
 ### About this app
 
@@ -18,9 +24,21 @@ CMIP6 data downloaded by Tongli Wang, Associate Professor at the UBC Department 
 
 **Emissions scenarios**--This app features climate model simulations from the ScenarioMIP project, which produces projections of future climate change based on scenarios called <a href="https://www.carbonbrief.org/explainer-how-shared-socioeconomic-pathways-explore-future-climate-change" target="_blank">Shared Socioeconomic Pathways</a>. This app features the four major ScenarioMIP SSPs: SSP1-2.6, SSP2-4.5, SSP3-7.0, and SSP5-8.5.  SSP1-2.6 assumes strong emissions reductions (mitigation) roughly consistent with the goals of the Paris Climate Accords to limit global warming to 2<sup>o</sup>C above pre-industrial temperatures. SSP2-4.5 assumes moderate mitigation roughly consistent with current emissions policies and economic trends. SSP3-7.0 is representative of a broader range of "baseline" scenarios that assume the absence of mitigation policies, and is associated with linear increase in the rate of greenhouse gas emissions. SSP5-8.5 is at the high end of the baseline scenarios, and rapid expansion of greenhouse gas emissions over the next several decades and end-of-century emissions more than three times higher than current emissions [Riahi et al. 2017](https://www.sciencedirect.com/science/article/pii/S0959378016300681). The SSPs begin in 2015; from 1850 to 2014, the climate models are run using historically observed emissions from natural (e.g., volcanoes) and human sources.  
 
-**Regional averages**--There is essentially no downscaling in this app. All climate model data were bilinearly interpolated to a common 0.5^o grid derived from the 025^o ERA5 grid (shown in the model topography maps in the Maps tab). Plot values are the average of the grid points across North America or the user-selected regions.
+**Regional averages**--There is essentially no downscaling in this app. All climate model data were bilinearly interpolated to a common 0.5^o grid derived from the 025^o ERA5 grid (shown in the model topography maps in the Maps tab). Plot values are the average of the grid points across North America or the user-selected IPCC regions.
 
-**Observations**--Observed historical data are obtained from <a href="http://climatena.ca/" target="_blank">ClimateNA</a> for the gridpoints of the common grid shown in Topography mode of the Maps tab. The observational time series is dashed prior to 1950 to indicate lower quality and quantity of weather station data. 
+#### The Time Series tab
+
+This tab allows users to compare model simulations to each other and to observations, and to produce customized exportable plots. 
+
+**Ensemble range**--There are several simulation runs for each climate model. This app shows the range of these runs i.e., the minimum and maximum of the model runs in each year of the time series. The "Model Info" tab specifies the number of runs for each model. 
+
+**Bias correction**--Bias correction is an option, defaulted "on", since one of the purposes of this app is to assess regional bias in each model and across the ensemble. When bias correction is turned on, each single-model ensemble is shifted so that its 1961-1990 ensemble mean matches the 1961-1990 mean of the observed time series. Bias correction is done by addition for temperature and multiplication for precipitation.  
+
+**Compiled ensembles**--Users can compile selected models into a multi-model ensemble. In these plots, the shaded envelope shows the maxima and minima of all the single-model ensembles collectively, and the multimodel ensemble mean is the mean of the single-model ensemble means. 
+
+**Station observations**--Station observations are available from two sources. The default station-based observational time series are obtained from the Climatic Research Unit (CRU TS v4.05; <a href="https://doi.org/10.1038/s41597-020-0453-3" target="_blank">Harris et al. 2020</a>) for temperature and the Global Precipitation Climatology Centre (GPCC; <a href="https://doi.org/10.5676/DWD_GPCC/FD_M_V2020_050" target="_blank">Schneider et al. 2020</a>) for precipitation. The observed historical time series from <a href="http://climatena.ca/" target="_blank">ClimateNA</a> are generated from the gridpoints of the common grid shown in Topography mode of the Maps tab. Both sources are spatial averages of weather station observations using different methods. The absolute baseline values of the different observational data sets are not expected to agree, since they account for elevation in different ways. However, differences among the observational datasets in anomalies and trends are of interest. 
+
+**ERA5 reanalysis**--A <a href="https://www.ecmwf.int/en/about/media-centre/focus/2020/fact-sheet-reanalysis" target="_blank">reanalysis</a> is a global weather model calibrated to observations. ERA5 is the state-of-the-art global reanalysis provided by the European Centre for Medium-Range Weather Forecasts <a href="https://rmets.onlinelibrary.wiley.com/doi/full/10.1002/qj.3803" target="_blank">(Hersbach et al. 2020)</a>. The ERA5 time series is provided to indicate the degree to which the gridding method in this app is a valid basis for comparing absolute climate conditions from models and observations. 
 
 #### The Choose Models tab
 
