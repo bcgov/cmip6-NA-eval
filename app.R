@@ -315,7 +315,7 @@ ui <- fluidPage(
                           div(style="display:inline-block; width: 290px",selectInput("element1",
                                                                                      label = "Choose the climate element",
                                                                                      choices = as.list(element.names),
-                                                                                     selected = element.names[1])),
+                                                                                     selected = element.names[2])),
                           div(style="display:inline-block; width: 200px",selectInput("yeartime1",
                                                                                      label = "Choose the month/season",
                                                                                      choices = as.list(yeartime.names),
@@ -329,7 +329,7 @@ ui <- fluidPage(
                             div(style="display:inline-block; width: 290px",selectInput("element2",
                                                                                        label = "Choose the climate element",
                                                                                        choices = as.list(element.names),
-                                                                                       selected = element.names[1])),
+                                                                                       selected = element.names[2])),
                             div(style="display:inline-block; width: 200px", selectInput("yeartime2",
                                                                                         label = "Choose the month/season",
                                                                                         choices = as.list(yeartime.names),
@@ -1035,10 +1035,10 @@ server <- function(input, output, session) {
                                        range=ylim)
     )
     
-    fig <- fig %>% add_markers(x=x0,y=y0, color="observed (2001-2020)", text="observed\n(2001-2020)", hoverinfo="text",
-                               marker = list(size = 25,
-                                             color = "grey"))
-    
+    # fig <- fig %>% add_markers(x=x0,y=y0, color="observed (2001-2020)", text="observed\n(2001-2020)", hoverinfo="text",
+    #                            marker = list(size = 25,
+    #                                          color = "grey"))
+    # 
     fig <- fig %>% add_markers(x=x.mean,y=y.mean, color="Custom ensemble mean", text="Custom ensemble mean", hoverinfo="text",
                                marker = list(size = 20,
                                              color = "grey", symbol = 3))
