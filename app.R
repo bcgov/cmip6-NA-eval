@@ -44,8 +44,11 @@ region.names <- c("North America", "NW North America", "NE North America", "West
 elements <- c("Tmax", "Tmin", "PPT")
 element.names <- c("Mean daily maximum temperature (Tmax)", "Mean daily minimum temperature (Tmin)", "Precipitation")
 element.names.units <- c(bquote(Mean~daily~bold(maximum)~temperature~"("*degree*C*")"),bquote(Mean~daily~bold(minimum)~temperature~"("*degree*C*")"), "Precipitation (mm)")
+elements.FullCMIP6 <- c("Tave", "PPT")
+element.names.FullCMIP6 <- c("Temperature (tas)", "Precipitation")
+element.names.FullCMIP6.units <- c(bquote(Temperature~"("*degree*C*")"), "Precipitation (mm)")
 variable.names <- read.csv("data/Variables_ClimateBC.csv")
-
+ 
 # extract the global climate models and scenarios from an arbitrary file. 
 files <- list.files("data/", pattern="^ensmin.NA")
 template <- read.csv(paste("data/", files[1], sep=""), stringsAsFactors = F)
@@ -108,7 +111,7 @@ ui <- fluidPage(
                         HTML("<h4>This tool provides visualizations and documentation of the global climate model ensemble featured in Version 7 
                                     of ClimateNA. The ensemble is from the new generation of global climate model simulations, the sixth Coupled Model 
                                     Intercomparison Project (CMIP6). Use this tool to learn about the model simulations in ClimateNA and choose a small 
-                                    ensemble suited for your research. A similar app with additional features for British Columbia is available at <a href='https://bcgov-env.shinyapps.io/cmip6-BC/' target='_blank'>https://bcgov-env.shinyapps.io/cmip6-BC/</a></h5></h4>")
+                                    ensemble suited for your research. A similar app for British Columbia is available at <a href='https://bcgov-env.shinyapps.io/cmip6-BC/' target='_blank'>https://bcgov-env.shinyapps.io/cmip6-BC/</a></h5></h4>")
                       )
                ),
                column(width = 3, align = "left",
@@ -126,28 +129,22 @@ ui <- fluidPage(
                                     Create smaller ensembles based on predefined or custom criteria.</h5 >")
                       )
                ),
-               # column(width = 2, align = "left",
-               #        wellPanel(
-               #          actionButton("link_to_Bias", HTML("<h4><b>Assess Bias</b></h4>")),
-               #          HTML("<h5>Assess model biases relative to historical observations.</h5 >")
-               #        )
-               # ),
                column(width = 3, align = "left",
                       wellPanel(
                         actionButton("link_to_Maps", HTML("<h4><b>Maps</b></h4>")),
                         HTML("<h5>Compare spatial variation in climate change among models. </h5 >")
                       )
                ),
-               # column(width = 2, align = "left",
-               #        wellPanel(
-               #          actionButton("link_to_Guidance", HTML("<h4><b>Guidance</b></h4>")),
-               #          HTML("<h5>Guidance for selecting models, emissions scenarios, and time periods. </h5 >")
-               #        )
-               # ),
+               column(width = 3, align = "left",
+                      wellPanel(
+                        actionButton("link_to_Representation", HTML("<h4><b>Representation</b></h4>")),
+                        HTML("<h5>Compare the 13-model ClimateNA ensemble to a larger 33-model CMIP6 ensemble </h5 >")
+                      )
+               ),
                column(width = 12,
                       HTML("<h4><b>Citation</b></h4>
                             <h5> <u>Please cite the contents of this app as:</u> <br>
-                            Mahony, C.R., T. Wang, A. Hamann, and A.J. Cannon. 2021. <a href='https://eartharxiv.org/repository/view/2510/' target='_blank'>A CMIP6 ensemble for downscaled monthly climate normals over North America</a>. EarthArXiv. <a href='https://doi.org/10.31223/X5CK6Z' target='_blank'>https://doi.org/10.31223/X5CK6Z</a> </h5>
+                            Mahony, C.R., T. Wang, A. Hamann, and A.J. Cannon. 2022. <a href='https://rmets.onlinelibrary.wiley.com/doi/full/10.1002/joc.7566' target='_blank'>A global climate model ensemble for downscaled monthly climate normals over North America</a>. International Journal of Climatology. In press. <a href='https://doi.org/10.1002/joc.7566' target='_blank'>doi.org/10.1002/joc.7566</a> </h5>
                             <h4><b>Contributors</b></h4>
                             <h5> <u>App created by:</u><br>
                                  Colin Mahony<br>
@@ -222,8 +219,8 @@ ui <- fluidPage(
                             ')),
                           
                           radioButtons("mode", "GCM selection mode",
-                                       choiceNames = c("Single GCM", "Ensemble"),
-                                       choiceValues = c("Single GCM", "Ensemble"),
+                                       choiceNames = c("Single GCM", "Ensemble", "Compare ensembles"),
+                                       choiceValues = c("Single GCM", "Ensemble", "Compare ensembles"),
                                        selected = "Ensemble",
                                        inline = T),
                           
@@ -431,8 +428,6 @@ ui <- fluidPage(
                                        selected = scenarios[3],
                                        inline = T),
                           
-                          checkboxInput("trajectories", label = "Include model trajectories", value = T),
-                          
                           fluidRow(
                             box(width = 12, 
                                 splitLayout(
@@ -524,7 +519,6 @@ ui <- fluidPage(
                                        choices = c("Climate change", "Topography"),
                                        selected = "Climate change"),
                           
-                          
                           conditionalPanel(
                             condition = "input.mapType == 'Climate change'",
                             
@@ -561,7 +555,7 @@ ui <- fluidPage(
                                 sliderTextInput("scenario.map", 
                                                 label = "Choose emissions scenario", 
                                                 choices = scenario.names, 
-                                                selected = scenario.names[2]),
+                                                selected = scenario.names[3]),
                                 
                                ),
                               
@@ -575,13 +569,11 @@ ui <- fluidPage(
                                              selected = proj.years[3]),
                                 
                                 radioButtons("scenario.map.fixed1", "emissions scenario",
-                                             choiceNames = scenario.names[2],
-                                             choiceValues = scenarios[2],
-                                             selected = scenarios[2],
+                                             choiceNames = scenario.names[3],
+                                             choiceValues = scenarios[3],
+                                             selected = scenarios[3],
                                              inline = T)
-                                
                               ),
-                              
                             ),
                             
                             conditionalPanel(
@@ -599,9 +591,9 @@ ui <- fluidPage(
                                            selected = proj.years[3]),
                               
                               radioButtons("scenario.map.fixed2", "emissions scenario",
-                                           choiceNames = scenario.names[2],
-                                           choiceValues = scenarios[2],
-                                           selected = scenarios[2],
+                                           choiceNames = scenario.names[3],
+                                           choiceValues = scenarios[3],
+                                           selected = scenarios[3],
                                            inline = T)
                               
                             )
@@ -611,6 +603,86 @@ ui <- fluidPage(
                         mainPanel(
                           
                           imageOutput("changeMap", width="100%", height="100%")
+                          
+                        )
+                      ),
+                      column(width = 12,
+                             style = "background-color:#003366; border-top:2px solid #fcba19;",
+                             
+                             tags$footer(class="footer",
+                                         tags$div(class="container", style="display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
+                                                  tags$ul(style="display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home", "Home", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")),
+                                                          tags$li(a(href="https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style="font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"))
+                                                  )
+                                         )
+                             )
+                      )
+             ),
+             
+             ## -----------------------------------------------------
+             ## Representation tab: Comparison to full CMIP6 ensemble
+             
+             tabPanel("Representation", 
+                      sidebarLayout(
+                        sidebarPanel(
+                          helpText("This tab shows the amount of change projected by 33 CMIP6 models. Change is calculated for the 2061-2100 period under the SSP2-4.5 scenario, relative to the 1961-1990 historical simulations of each model."),
+                          
+                          tags$head(tags$script('$(document).on("shiny:connected", function(e) {
+                            Shiny.onInputChange("innerWidth", window.innerWidth);
+                            });
+                            $(window).resize(function(e) {
+                            Shiny.onInputChange("innerWidth", window.innerWidth);
+                            });
+                            ')),
+                          
+                          tags$style(type = "text/css", ".irs-grid-pol.small {height: 0px;}"),
+                          
+                          fluidRow(
+                            box(width = 12, 
+                                splitLayout(
+                                  checkboxInput("highlight13", label = "Highlight the ClimateNA ensemble", value = T),                                  
+                                  checkboxInput("runs.FullCMIP6", label = "Show model runs", value = T)
+                                )
+                            )
+                          ),
+                          
+                          
+                          div(style="display:inline-block; width: 290px",selectInput("element1.FullCMIP6",
+                                                                                     label = "x-axis element",
+                                                                                     choices = as.list(element.names.FullCMIP6),
+                                                                                     selected = element.names.FullCMIP6[1])),
+                          div(style="display:inline-block; width: 200px",selectInput("yeartime1.FullCMIP6",
+                                                                                     label = "x-axis month/season",
+                                                                                     choices = as.list(yeartime.names),
+                                                                                     selected = yeartime.names[3])),
+                          
+                          
+                          div(style="display:inline-block; width: 290px",selectInput("element2.FullCMIP6",
+                                                                                     label = "y-axis element",
+                                                                                     choices = as.list(element.names.FullCMIP6),
+                                                                                     selected = element.names.FullCMIP6[2])),
+                          div(style="display:inline-block; width: 200px",selectInput("yeartime2.FullCMIP6",
+                                                                                     label = "y-axis month/season",
+                                                                                     choices = as.list(yeartime.names),
+                                                                                     selected = yeartime.names[3])),
+                          
+                          selectInput("region.name.FullCMIP6",
+                                      label = "Choose an IPCC region",
+                                      choices = as.list(region.names),
+                                      selected = region.names[6]),
+                          
+                          img(src = "ipccregions.png", height = 1861*1/5, width = 1861*1/5)
+                        ),    
+                        
+                        mainPanel(
+                          
+                          plotlyOutput(outputId = "FullCMIP6Plot", height="600px"),
+                          downloadButton(outputId = "downloadData_FullCMIP6", label = "Download data")
                           
                         )
                       ),
@@ -670,6 +742,10 @@ server <- function(input, output, session) {
   
   observeEvent(input$link_to_Maps, {
     updateNavbarPage(session, "CMIP6-NA", selected="Maps")
+  })
+  
+  observeEvent(input$link_to_Representation, {
+    updateNavbarPage(session, "CMIP6-NA", selected="Representation")
   })
   
   # This is the gcm selection for the time series plot. done as a renderUI to allow the reset button
@@ -767,6 +843,7 @@ server <- function(input, output, session) {
             }
           }
           temp$compile <- if(length(gcms.ts)==0) rep(NA, dim(temp)[1]) else if(length(gcms.ts)==1) temp[,which(names(temp)==gcms.ts)] else apply(temp[,which(names(temp)%in%gcms.ts)], 1, substr(ensstat, 4, nchar(ensstat)), na.rm=T)
+          # temp$compare <- apply(temp[,which(names(temp)%in%input$gcms.compare)], 1, substr(ensstat, 4, nchar(ensstat)), na.rm=T)
           assign(paste(ensstat, scenario, num, sep="."), temp)
           visibledata <- c(visibledata, temp$compile) #store values in a big vector for maintaining a constant ylim
         }
@@ -1146,6 +1223,109 @@ server <- function(input, output, session) {
 
   }, deleteFile = FALSE)
 
+  output$FullCMIP6Plot <- renderPlotly({
+    
+    # region <- regions[7]
+    # yeartime1 <- yeartimes[1]
+    # yeartime2 <- yeartimes[1]
+    # element1 <- elements.FullCMIP6[1]
+    # element2 <- elements.FullCMIP6[2]
+    # proj.year <- proj.years[3]-9
+    # scenario <- scenarios[2]
+    # gcms.change <- gcm.names
+    
+    region <- regions[which(region.names==input$region.name.FullCMIP6)]
+    yeartime1 <- yeartimes[which(yeartime.names==input$yeartime1.FullCMIP6)]
+    yeartime2 <- yeartimes[which(yeartime.names==input$yeartime2.FullCMIP6)]
+    element1 <- elements.FullCMIP6[which(element.names.FullCMIP6==input$element1.FullCMIP6)]
+    element2 <- elements.FullCMIP6[which(element.names.FullCMIP6==input$element2.FullCMIP6)]
+
+    variable1 <- paste(element1, yeartime1, sep= if(yeartime1%in%seasons) "_" else "")
+    variable2 <- paste(element2, yeartime2, sep= if(yeartime2%in%seasons) "_" else "")
+    
+    data <- read.csv(paste("data/change.FullCMIP6", region, "csv", sep="."))
+    data.runs <- read.csv(paste("data/change.FullCMIP6.runs", region, "csv", sep="."))
+    
+    gcms.FullCMIP6 <- data$gcm
+    mods.FullCMIP6 <- substr(gcms.FullCMIP6, 1, 2)
+    
+    colors = grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)][-1]
+    if(input$highlight13==F){
+    set.seed(3)
+    ColScheme.FullCMIP6 <- c(brewer.pal(n=12, "Paired"),sample(colors,length(gcms.FullCMIP6)-12))
+    ColScheme.FullCMIP6[11] <- "blue"
+    } else {
+      ColScheme.FullCMIP6 <- rep("lightgray", length(gcms.FullCMIP6))
+      ColScheme.FullCMIP6[which(gcms.FullCMIP6%in%gcm.names)] <- "red"
+    }
+    x <- data.runs[, which(names(data.runs)==variable1)]
+    y <- data.runs[, which(names(data.runs)==variable2)]
+
+    xlim=range(x)*c(if(min(x)<0) 1.1 else 0.9, if(max(x)>0) 1.1 else 0.9)
+    ylim=range(y)*c(if(min(y)<0) 1.1 else 0.9, if(max(y)>0) 1.1 else 0.9)
+    
+    #initiate the plot
+    fig <- plot_ly(x=x,y=y, type = 'scatter', mode = 'markers', marker = list(color = "lightgrey", size=5), hoverinfo="none", color="All models/scenarios/times")
+    
+    fig <- fig %>% layout(xaxis = list(title=paste("Change in", variable.names$Variable[which(variable.names$Code==variable1)]), 
+                                       range=xlim), 
+                          yaxis = list(title=paste("Change in", variable.names$Variable[which(variable.names$Code==variable2)]),
+                                       range=ylim)
+    )
+
+    gcm=gcms.FullCMIP6[2]
+    for(gcm in gcms.FullCMIP6){
+      i=which(gcms.FullCMIP6==gcm)
+      x1 <- data[which(data$gcm==gcm), which(names(data)==variable1)]
+      y1 <- data[which(data$gcm==gcm), which(names(data)==variable2)]
+
+      #data to produce convex hull of individual runs
+      x.runs <- data.runs[which(data.runs$gcm==gcm), which(names(data.runs)==variable1)]
+      y.runs <- data.runs[which(data.runs$gcm==gcm), which(names(data.runs)==variable2)]
+      runs <- data.runs$run[which(data.runs$gcm==gcm)]
+      
+      if(input$runs.FullCMIP6==T){
+        fig <- fig %>% add_markers(x=x.runs,y=y.runs, text=paste(gcms.FullCMIP6[i], runs), hoverinfo="text", showlegend = F,
+                                   marker = list(size = 7,
+                                                 color = ColScheme.FullCMIP6[i],
+                                                 line = list(color = "black",
+                                                             width = 1)),
+                                   legendgroup=paste("group", i, sep=""))
+      }
+      
+      fig <- fig %>% add_markers(x=x1,y=y1, color=gcms.FullCMIP6[i], text=gcms.FullCMIP6[i], hoverinfo="text", 
+                                 marker = list(size = 20,
+                                               color = ColScheme.FullCMIP6[i],
+                                               line = list(color = "black",
+                                                           width = 1)),
+                                 legendgroup=paste("group", i, sep=""))
+      
+      fig <- fig %>% add_annotations(x=x1,y=y1, text = sprintf("<b>%s</b>", mods.FullCMIP6[i]), xanchor = 'center', yanchor = 'center', showarrow = F,
+                                     legendgroup=paste("group", i, sep=""))
+      
+    }
+    
+    if(element1=="PPT") fig <- fig %>% layout(xaxis = list(tickformat = "%"))
+    if(element2=="PPT") fig <- fig %>% layout(yaxis = list(tickformat = "%"))
+    
+    fig
+    
+  }  
+  )
+  
+  # Downloadable csv of selected dataset ----
+  data_change <- reactive(read.csv(paste("data/change.FullCMIP6.runs", regions[which(region.names==input$region.name.change)], "csv", sep=".")))
+  
+  output$downloadData_FullCMIP6 <- downloadHandler(
+    
+    filename = function() {
+      paste("change.FullCMIP6", regions[which(region.names==input$region.name.FullCMIP6)], "csv", sep=".")
+    },
+    content = function(file) {
+      write.csv(data_change.FullCMIP6(), file, row.names = FALSE)
+    }
+  )
+  
   output$table <- DT::renderDataTable({
     DT::datatable(modelMetadata,
                   options = list(pageLength = dim(modelMetadata)[1]),
@@ -1160,5 +1340,13 @@ server <- function(input, output, session) {
 
 # Run the app ----
 shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+
 
 
