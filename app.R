@@ -219,8 +219,8 @@ ui <- fluidPage(
                             ')),
                           
                           radioButtons("mode", "GCM selection mode",
-                                       choiceNames = c("Single GCM", "Ensemble", "Compare ensembles"),
-                                       choiceValues = c("Single GCM", "Ensemble", "Compare ensembles"),
+                                       choiceNames = c("Single GCM", "Ensemble"),
+                                       choiceValues = c("Single GCM", "Ensemble"),
                                        selected = "Ensemble",
                                        inline = T),
                           
@@ -247,7 +247,6 @@ ui <- fluidPage(
                             checkboxInput("compile", label = "Compile into ensemble projection", value = TRUE),
                             
                             uiOutput('reset_gcms'), # this is the radiobutton list of gcms but it is moved to the server side to allow the reset button 
-                            
                             
                           ),
                           
@@ -278,6 +277,16 @@ ui <- fluidPage(
                           fluidRow(
                             box(width = 12, 
                                 splitLayout(
+                                  checkboxInput("showrange", label = "Show range of projections", value = T),
+                                  
+                                  checkboxInput("showmean", label = "Show mean of projections", value = T)
+                                )
+                            )
+                          ),
+                          
+                          fluidRow(
+                            box(width = 12, 
+                                splitLayout(
                                   checkboxInput("yearlines", label = "Show 5-year gridlines", value = F),
                                   
                                   checkboxInput("yfit", label = "fit y axis to visible data", value = T)
@@ -285,6 +294,20 @@ ui <- fluidPage(
                             )
                           ),
                           
+                          
+                          fluidRow(
+                            box(width = 12,
+                                splitLayout(cellWidths = c("75%", "25%"),
+                                            
+                                            radioButtons("compare.ensemble", label="Compare to a predefined ensemble",
+                                                         choiceNames = c("None", "13-model (ClimateNA)", "8-model subset"),
+                                                         choiceValues = c("None", "13-model", "8-model"),
+                                                         selected = "None",
+                                                         inline = T
+                                            )
+                                )
+                            )
+                          ),
                           
                           checkboxGroupInput("observations", "Choose observational datasets",
                                              choiceNames = c("Stations (CRU/GPCC)", "Stations (ClimateNA)", "ERA5 reanalysis"),
@@ -338,7 +361,9 @@ ui <- fluidPage(
                                       choices = as.list(region.names),
                                       selected = region.names[1]),
                           
-                          img(src = "ipccregions.png", height = round(1861*1/5), width = round(1993*1/5))
+                          img(src = "ipccregions.png", height = round(1861*1/5), width = round(1993*1/5)),
+                          
+                          sliderInput("cex", label = "font size", min = 0.8, max = 1.4, step=0.1, value=1)
                         ),
                         
                         mainPanel(
@@ -790,6 +815,7 @@ server <- function(input, output, session) {
     variable1 <- paste(element1, yeartime1, sep= if(yeartime1%in%seasons) "_" else "")
     variable2 <- paste(element2, yeartime2, sep= if(yeartime2%in%seasons) "_" else "")
     gcms.ts <- if(input$mode=="Ensemble") input$gcms.ts2 else input$gcms.ts1
+    gcms.compare <- if(input$compare.ensemble=="13-model") gcms else if(input$compare.ensemble=="8-model") gcms[select] else NA
     scenarios1 <- c("historical", input$scenarios1)
     nums <- if(input$compare==T) c(1,2) else c(1)
     biascorrect <- input$biascorrect
@@ -843,15 +869,15 @@ server <- function(input, output, session) {
             }
           }
           temp$compile <- if(length(gcms.ts)==0) rep(NA, dim(temp)[1]) else if(length(gcms.ts)==1) temp[,which(names(temp)==gcms.ts)] else apply(temp[,which(names(temp)%in%gcms.ts)], 1, substr(ensstat, 4, nchar(ensstat)), na.rm=T)
-          # temp$compare <- apply(temp[,which(names(temp)%in%input$gcms.compare)], 1, substr(ensstat, 4, nchar(ensstat)), na.rm=T)
+          if(is.na(gcms.compare)!=T) temp$compare <- apply(temp[,which(names(temp)%in%gcms.compare)], 1, substr(ensstat, 4, nchar(ensstat)), na.rm=T)
           assign(paste(ensstat, scenario, num, sep="."), temp)
-          visibledata <- c(visibledata, temp$compile) #store values in a big vector for maintaining a constant ylim
+          if(input$showrange==T | ensstat==ensstats[3]) visibledata <- c(visibledata, temp$compile, if(is.na(gcms.compare)!=T) temp$compare ) #store values in a big vector for maintaining a constant ylim
         }
       }
     }
     
     # PLOT
-    par(mfrow=c(1,1), mar=c(3,3,0.1,3), mgp=c(1.75, 0.25, 0), cex=1.4)
+    par(mfrow=c(1,1), mar=c(3,3,0.1,3), mgp=c(1.75, 0.25, 0), cex=1.5*input$cex)
     if(element1==element2){
       ylab <- element.names.units[[which(elements==element1)]]
     } else {
@@ -899,6 +925,49 @@ server <- function(input, output, session) {
         recent.era5 <- mean(y2[which(x2%in%2011:2020)], na.rm=T)
       }
       
+      # time series for the comparison ensemble
+      if(input$compare.ensemble!="None"){
+        # scenario <- scenarios1[1]
+        for(scenario in scenarios1[order(c(1,4,5,3,2)[which(scenarios%in%scenarios1)])]){
+
+          for(ensstat in ensstats){
+            temp <- get(paste(ensstat, scenario, num, sep="."))
+            x <- temp[,1]
+            temp <- temp$compare
+            assign(ensstat, temp)
+            assign(paste("x", scenario, sep="."), x)
+            assign(paste(ensstat, scenario, sep="."), temp)
+          }
+
+          # colScheme <- c("gray60", "seagreen", "goldenrod4", "darkorange3", "darkred")
+          colScheme <- c("gray60", "dodgerblue4", "seagreen", "darkorange3", "darkred")
+          # colScheme <- c("gray80", "#1d3354", "#e9dc3d", "#f11111", "#830b22")
+          if(input$showrange==T) polygon(c(x, rev(x)), c(ensmin, rev(ensmax)), col=alpha(colScheme[which(scenarios==scenario)], 0.25), border=colScheme[which(scenarios==scenario)], lty=2)
+
+          if(scenario != "historical"){
+            par(xpd=T)
+            baseline <- mean(ensmean.historical[111:140])
+            projected <- mean(ensmean[(length(x)-5):(length(x))])
+            if(element=="PPT"){
+              change <- round(projected/baseline-1,2)
+              if(is.na(change)==F) text(2098,projected, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=colScheme[which(scenarios==scenario)], pos=4, font=1, cex=0.8)
+            } else {
+              change <- round(projected-baseline,1)
+              if(is.na(change)==F) text(2098,projected, if(change>0) paste("+",change,"C", sep="") else paste(change,"C", sep=""), col=colScheme[which(scenarios==scenario)], pos=4, font=1, cex=0.8)
+            }
+            par(xpd=F)
+          }
+
+          print(scenario)
+        }
+
+        # overlay the ensemble mean lines on top of all polygons
+        for(scenario in scenarios1[order(c(1,4,5,3,2)[which(scenarios%in%scenarios1)])]){
+          if(input$showmean==T) lines(get(paste("x", scenario, sep=".")), get(paste("ensmean", scenario, sep=".")), col=colScheme[which(scenarios==scenario)], lwd=2, lty=2)
+        }
+      }
+      
+      # time series for selected ensemble
       if(input$compile==T) gcms.ts <- "compile" #this prevents the plotting of individual GCM projections and plots a single envelope for the ensemble as a whole. 
       for(gcm in gcms.ts){
         # scenario <- scenarios1[1]
@@ -916,7 +985,7 @@ server <- function(input, output, session) {
           # colScheme <- c("gray60", "seagreen", "goldenrod4", "darkorange3", "darkred")
           colScheme <- c("gray60", "dodgerblue4", "seagreen", "darkorange3", "darkred")
           # colScheme <- c("gray80", "#1d3354", "#e9dc3d", "#f11111", "#830b22")
-          polygon(c(x, rev(x)), c(ensmin, rev(ensmax)), col=alpha(colScheme[which(scenarios==scenario)], if(gcm=="ensemble") 0.35 else 0.35), border=colScheme[which(scenarios==scenario)])
+          if(input$showrange==T) polygon(c(x, rev(x)), c(ensmin, rev(ensmax)), col=alpha(colScheme[which(scenarios==scenario)], if(gcm=="ensemble") 0.35 else 0.35), border=colScheme[which(scenarios==scenario)])
           
           if(refline==T){
             ref.temp <- mean(ensmean.historical[111:140])
@@ -927,7 +996,7 @@ server <- function(input, output, session) {
           if(scenario != "historical"){
             par(xpd=T)
             baseline <- mean(ensmean.historical[111:140])
-            projected <- mean(ensmean[(length(x)-10):(length(x))])
+            projected <- mean(ensmean[(length(x)-5):(length(x))])
             if(element=="PPT"){
               change <- round(projected/baseline-1,2)
               if(is.na(change)==F) text(2098,projected, if(change>0) paste("+",change*100,"%", sep="") else paste(change*100,"%", sep=""), col=colScheme[which(scenarios==scenario)], pos=4, font=2, cex=1)
@@ -1017,11 +1086,18 @@ server <- function(input, output, session) {
       b <- if("climatena"%in%observations) 2 else NA
       c <- if("era5"%in%observations) 3 else NA
       d <- if(length(gcms.ts>0)) 4 else NA
-      s <- !is.na(c(a,b,c,d))
+      e <- if(input$compare.ensemble!="None") 5 else NA
+      s <- !is.na(c(a,b,c,d,e))
       legend.GCM <- if(input$mode=="Ensemble") paste("Simulations (", length(input$gcms.ts2), " GCMs)", sep="")  else paste("Simulations (", input$gcms.ts1, ")", sep="")
+      legend.compare <- paste("Simulations (", length(gcms.compare), " GCMs)", sep="")  
       label.cru <- if(element1==element2 & element1=="PPT") "Observed (GPCC)" else {if(element1==element2 & element1!="PPT") "Observed (CRU TS4)" else "Observed (CRU/GPCC)"}
-            legend("topleft", title = "Historical Period", legend=c(label.cru, "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM)[s], bty="n",
-             lty=c(1,1,1,NA)[s], col=c(cru.color, obs.color, era5.color, NA)[s], lwd=c(3,1.5,2,NA)[s], pch=c(NA,NA,NA, 22)[s], pt.bg = c(NA, NA,NA, colScheme[1])[s], pt.cex=c(NA,NA,NA,2)[s])
+      legend("topleft", title = "Historical Period", legend=c(label.cru, "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM, legend.compare)[s], bty="n",
+             lty=c(1,1,1,if(input$showrange==T) NA else 1 ,2)[s], 
+             col=c(cru.color, obs.color, era5.color, if(input$showrange==T) NA else colScheme[max(which(scenarios%in%scenarios1))] ,colScheme[max(which(scenarios%in%scenarios1))])[s], 
+             lwd=c(3,1.5,2, if(input$showrange==T) NA else 2 ,1.5)[s], 
+             pch=c(NA,NA,NA, if(input$showrange==T) 22 else NA , NA)[s], 
+             pt.bg = c(NA, NA,NA, if(input$showrange==T) colScheme[1] else NA , NA)[s], 
+             pt.cex=c(NA,NA,NA,if(input$showrange==T) 2 else NA ,NA)[s])
       
       s <- rev(which(scenarios[-1]%in%input$scenarios1))
       legend("top", title = "Future Scenarios", legend=scenario.names[-1][s], bty="n",
@@ -1029,7 +1105,7 @@ server <- function(input, output, session) {
       
       mtext(region.names[which(regions==region)], side=1, line=-1.5, adj=0.95, font=2, cex=1.4)
       
-      mtext("  Created using https://bcgov-env.shinyapps.io/cmip6-BC\n  Copyright 2021 Province of BC\n  Contact: Colin Mahony colin.mahony@gov.bc.ca", side=1, line=-1.35, adj=0.0, font=1, cex=1.1, col="gray")
+      mtext("  Created using https://bcgov-env.shinyapps.io/cmip6-NA\n  Copyright 2021 Province of BC\n  Contact: Colin Mahony colin.mahony@gov.bc.ca", side=1, line=-1.35, adj=0.0, font=1, cex=1.1, col="gray")
       
       print(num)
     }
@@ -1041,7 +1117,16 @@ server <- function(input, output, session) {
   
   # Plot download
   output$downloadPlot <- downloadHandler(
-    filename =  "Plot.png",
+    filename =  function(){
+      paste("cmip6NA", regions[which(region.names==input$region.name)], 
+            elements[which(element.names==input$element1)], 
+            if(input$compare==T){
+              paste(yeartimes[which(yeartime.names==input$yeartime1)], 
+                    elements[which(element.names==input$element2)] ,
+                    yeartimes[which(yeartime.names==input$yeartime2)], sep=".")
+            } else {yeartimes[which(yeartime.names==input$yeartime1)]},
+            "png", sep=".")
+    },
     
     content = function(file) {
       
