@@ -1088,20 +1088,20 @@ server <- function(input, output, session) {
       d <- if(length(gcms.ts>0)) 4 else NA
       e <- if(input$compare.ensemble!="None") 5 else NA
       s <- !is.na(c(a,b,c,d,e))
-      legend.GCM <- if(input$mode=="Ensemble") paste("Simulations (", length(input$gcms.ts2), " GCMs)", sep="")  else paste("Simulations (", input$gcms.ts1, ")", sep="")
-      legend.compare <- paste("Simulations (", length(gcms.compare), " GCMs)", sep="")  
+      legend.GCM <- if(input$mode=="Ensemble") paste("Simulated (", length(input$gcms.ts2), " GCMs)", sep="")  else paste("Simulated (", input$gcms.ts1, ")", sep="")
+      legend.compare <- paste("Simulated (", length(gcms.compare), " GCMs)", sep="")  
       label.cru <- if(element1==element2 & element1=="PPT") "Observed (GPCC)" else {if(element1==element2 & element1!="PPT") "Observed (CRU TS4)" else "Observed (CRU/GPCC)"}
-      legend("topleft", title = "Historical Period", legend=c(label.cru, "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM, legend.compare)[s], bty="n",
-             lty=c(1,1,1,if(input$showrange==T) NA else 1 ,2)[s], 
-             col=c(cru.color, obs.color, era5.color, if(input$showrange==T) NA else colScheme[max(which(scenarios%in%scenarios1))] ,colScheme[max(which(scenarios%in%scenarios1))])[s], 
-             lwd=c(3,1.5,2, if(input$showrange==T) NA else 2 ,1.5)[s], 
-             pch=c(NA,NA,NA, if(input$showrange==T) 22 else NA , NA)[s], 
-             pt.bg = c(NA, NA,NA, if(input$showrange==T) colScheme[1] else NA , NA)[s], 
-             pt.cex=c(NA,NA,NA,if(input$showrange==T) 2 else NA ,NA)[s])
+      legend("topleft", title = "", legend=c(label.cru, "Observed (ClimateNA)", "ERA5 reanalysis", legend.GCM, legend.compare)[s], bty="n",
+             lty=c(1,1,1,1 ,2)[s], 
+             col=c(cru.color, obs.color, era5.color, "gray", "gray")[s], 
+             lwd=c(3,1.5,2, 2 ,2)[s], 
+             pch=c(NA,NA,NA, NA , NA)[s], 
+             pt.bg = c(NA, NA,NA, NA , NA)[s], 
+             pt.cex=c(NA,NA,NA,NA ,NA)[s])
       
       s <- rev(which(scenarios[-1]%in%input$scenarios1))
-      legend("top", title = "Future Scenarios", legend=scenario.names[-1][s], bty="n",
-             lty=c(NA,NA,NA,NA)[s], col=colScheme[-1][s], lwd=c(NA,NA,NA,NA)[s], pch=c(22, 22, 22, 22)[s], pt.bg = alpha(colScheme[-1][s], 0.35), pt.cex=c(2,2,2,2)[s])
+      legend("top", title = "Scenarios", legend=c("Historical", scenario.names[-1][s]), bty="n",
+             lty=c(NA,NA,NA,NA,NA)[c(1,s+1)], col=colScheme[c(1,s+1)], lwd=c(NA,NA,NA,NA,NA)[c(1,s+1)], pch=c(22, 22,22,22,22)[c(1,s+1)], pt.bg = alpha(colScheme[c(1,s+1)], 0.35), pt.cex=c(2,2,2,2,2)[c(1,s+1)])
       
       mtext(region.names[which(regions==region)], side=1, line=-1.5, adj=0.95, font=2, cex=1.4)
       
